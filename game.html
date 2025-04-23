@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tic Tac Toe</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --fg: #e0e0e0;
+      --accent: #9ca3af;
+      --win: #4ade80;
+      --lose: #ef4444;
+      --cell-bg: #1e1e1e;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 300;
+      margin-bottom: 10px;
+      color: var(--fg);
+    }
+
+    .scoreboard {
+      margin: 8px 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      min-height: 1.5rem;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 10px;
+      margin: 30px 0;
+    }
+
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: var(--cell-bg);
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      font-size: 2.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .cell:hover {
+      background: #2c2c2c;
+    }
+
+    .winner {
+      color: var(--win);
+    }
+
+    .loser {
+      color: var(--lose);
+    }
+
+    button {
+      padding: 10px 18px;
+      font-size: 1rem;
+      background: var(--fg);
+      color: var(--bg);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe</h1>
+  <div class="scoreboard">You: <span id="playerScore">0</span> | Computer: <span id="computerScore">0</span></div>
+  <div class="status" id="status">Your move</div>
+  <div class="board" id="board"></div>
+  <button onclick="resetGame()">New Match</button>
+
+  <script>
+    const boardEl = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const playerScoreEl = document.getElementById('playerScore');
+    const computerScoreEl = document.getElementById('computerScore');
+
+    let board = Array(9).fill(null);
+    let player = 'X';
+    let computer = 'O';
+    let isPlayerTurn = true;
+    let gameActive = true;
+    let playerScore = 0;
+    let computerScore = 0;
+    let rounds = 0;
+
+    const winCombos = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      board.forEach((cell, i) => {
+        const el = document.createElement('div');
+        el.className = 'cell';
+        el.textContent = cell || '';
+        el.addEventListener('click', () => handleClick(i));
+        boardEl.appendChild(el);
+      });
+    }
+
+    function handleClick(index) {
+      if (!gameActive || !isPlayerTurn || board[index]) return;
+      board[index] = player;
+      renderBoard();
+      if (checkWinner(player)) endRound('player');
+      else if (board.every(Boolean)) endRound('draw');
+      else {
+        isPlayerTurn = false;
+        setTimeout(() => computerMove(), 400);
+      }
+    }
+
+    function computerMove() {
+      const move = pickSmartMove();
+      board[move] = computer;
+      renderBoard();
+      if (checkWinner(computer)) endRound('computer');
+      else if (board.every(Boolean)) endRound('draw');
+      else isPlayerTurn = true;
+    }
+
+    function pickSmartMove() {
+      if (Math.random() < 0.7) {
+        const best = minimax(board, computer);
+        return best.index;
+      }
+      const options = board.map((v, i) => v ? null : i).filter(i => i !== null);
+      return options[Math.floor(Math.random() * options.length)];
+    }
+
+    function checkWinner(p) {
+      return winCombos.some(([a,b,c]) => board[a] === p && board[b] === p && board[c] === p);
+    }
+
+    function endRound(winner) {
+      gameActive = false;
+      if (winner === 'player') {
+        playerScore++;
+        playerScoreEl.textContent = playerScore;
+        statusEl.innerHTML = `<span class="winner">You win this round!</span>`;
+      } else if (winner === 'computer') {
+        computerScore++;
+        computerScoreEl.textContent = computerScore;
+        statusEl.innerHTML = `<span class="loser">Computer wins this round.</span>`;
+      } else {
+        statusEl.textContent = "It's a draw.";
+      }
+
+      if (playerScore === 3 || computerScore === 3) {
+        setTimeout(() => {
+          const final = playerScore === 3 ? "🏆 You win the match!" : "🤖 Computer wins the match!";
+          statusEl.innerHTML = `<strong class="${playerScore === 3 ? 'winner' : 'loser'}">${final}</strong>`;
+        }, 500);
+      } else {
+        setTimeout(startNewRound, 1200);
+      }
+    }
+
+    function startNewRound() {
+      board = Array(9).fill(null);
+      gameActive = true;
+      isPlayerTurn = ++rounds % 2 === 0;
+      renderBoard();
+      statusEl.textContent = isPlayerTurn ? "Your move" : "Computer starts...";
+      if (!isPlayerTurn) setTimeout(() => computerMove(), 600);
+    }
+
+    function resetGame() {
+      board = Array(9).fill(null);
+      playerScore = 0;
+      computerScore = 0;
+      rounds = 0;
+      gameActive = true;
+      playerScoreEl.textContent = '0';
+      computerScoreEl.textContent = '0';
+      startNewRound();
+    }
+
+    function minimax(newBoard, currentPlayer) {
+      const avail = newBoard.map((v, i) => v ? null : i).filter(i => i !== null);
+      if (checkWinner(player)) return { score: -10 };
+      if (checkWinner(computer)) return { score: 10 };
+      if (avail.length === 0) return { score: 0 };
+
+      const moves = [];
+
+      for (let i of avail) {
+        const move = { index: i };
+        newBoard[i] = currentPlayer;
+        const result = minimax(newBoard, currentPlayer === computer ? player : computer);
+        move.score = result.score;
+        newBoard[i] = null;
+        moves.push(move);
+      }
+
+      return currentPlayer === computer
+        ? moves.reduce((a, b) => (a.score > b.score ? a : b))
+        : moves.reduce((a, b) => (a.score < b.score ? a : b));
+    }
+
+    startNewRound();
+  </script>
+</body>
+</html>
